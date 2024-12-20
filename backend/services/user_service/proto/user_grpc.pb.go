@@ -4,7 +4,7 @@
 // - protoc             v3.19.6
 // source: user.proto
 
-package user_proto
+package proto
 
 import (
 	context "context"
@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_CreateUser_FullMethodName  = "/user_proto.UserService/CreateUser"
-	UserService_GetUserById_FullMethodName = "/user_proto.UserService/GetUserById"
-	UserService_GetUsers_FullMethodName    = "/user_proto.UserService/GetUsers"
-	UserService_UpdateUser_FullMethodName  = "/user_proto.UserService/UpdateUser"
-	UserService_DeleteUser_FullMethodName  = "/user_proto.UserService/DeleteUser"
+	UserService_CreateUser_FullMethodName  = "/user.UserService/CreateUser"
+	UserService_GetUserById_FullMethodName = "/user.UserService/GetUserById"
+	UserService_GetUsers_FullMethodName    = "/user.UserService/GetUsers"
+	UserService_UpdateUser_FullMethodName  = "/user.UserService/UpdateUser"
+	UserService_DeleteUser_FullMethodName  = "/user.UserService/DeleteUser"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -244,7 +244,7 @@ func _UserService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec f
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var UserService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "user_proto.UserService",
+	ServiceName: "user.UserService",
 	HandlerType: (*UserServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

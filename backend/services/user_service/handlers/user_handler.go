@@ -4,41 +4,46 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aburifat/go-agro/services/user_service/proto/user_proto"
+	"github.com/aburifat/go-agro/services/user_service/models"
+	"github.com/aburifat/go-agro/services/user_service/proto"
+	"github.com/aburifat/go-agro/services/user_service/repository"
 	"github.com/aburifat/go-agro/services/user_service/storage"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type UserHandler struct {
-	user_proto.UnimplementedUserServiceServer
-	storage storage.UserStorage
+	proto.UnimplementedUserServiceServer
+	collection *mongo.Collection
 }
 
-func NewUserHandler(storage storage.UserStorage) *UserHandler {
-	return &UserHandler{
-		storage: storage,
+func NewUserHandler(storage *storage.Storage) *UserHandler {
+	userHandler := UserHandler{
+		collection: storage.GetCollection("users"),
 	}
+
+	return &userHandler
 }
 
-func (h *UserHandler) CreateUser(ctx context.Context, req *user_proto.CreateUserRequest) (*user_proto.CreateUserResponse, error) {
-	user := &storage.User{
+func (h *UserHandler) CreateUser(ctx context.Context, req *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
+	user := &models.User{
 		Username: req.GetUsername(),
 		Email:    req.GetEmail(),
 		Password: req.GetPassword(),
 	}
 
-	id, err := h.storage.Create(user)
+	id, err := repository.Create(h.collection, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %v", err)
 	}
 
-	return &user_proto.CreateUserResponse{
+	return &proto.CreateUserResponse{
 		Id:      id,
 		Message: "User created successfully",
 	}, nil
 }
 
-func (h *UserHandler) GetUserById(ctx context.Context, req *user_proto.GetUserByIdRequest) (*user_proto.GetUserByIdResponse, error) {
-	user, err := h.storage.GetById(req.GetId())
+func (h *UserHandler) GetUserById(ctx context.Context, req *proto.GetUserByIdRequest) (*proto.GetUserByIdResponse, error) {
+	user, err := repository.GetById[models.User](h.collection, req.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by id: %v", err)
 	}
@@ -46,57 +51,57 @@ func (h *UserHandler) GetUserById(ctx context.Context, req *user_proto.GetUserBy
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return &user_proto.GetUserByIdResponse{
+	return &proto.GetUserByIdResponse{
 		Id:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
 	}, nil
 }
 
-func (h *UserHandler) GetUsers(ctx context.Context, req *user_proto.GetUsersRequest) (*user_proto.GetUsersResponse, error) {
-	users, err := h.storage.GetAll(int(req.GetPageNumber()), int(req.GetPageSize()))
+func (h *UserHandler) GetUsers(ctx context.Context, req *proto.GetUsersRequest) (*proto.GetUsersResponse, error) {
+	users, err := repository.GetAll[models.User](h.collection, int(req.GetPageNumber()), int(req.GetPageSize()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users: %v", err)
 	}
 
-	var userList []*user_proto.User
+	var userList []*proto.User
 	for _, u := range users {
-		userList = append(userList, &user_proto.User{
+		userList = append(userList, &proto.User{
 			Id:       u.ID,
 			Username: u.Username,
 			Email:    u.Email,
 		})
 	}
 
-	return &user_proto.GetUsersResponse{
+	return &proto.GetUsersResponse{
 		Users: userList,
 	}, nil
 }
 
-func (h *UserHandler) UpdateUser(ctx context.Context, req *user_proto.UpdateUserRequest) (*user_proto.UpdateUserResponse, error) {
-	updatedUser := &storage.User{
+func (h *UserHandler) UpdateUser(ctx context.Context, req *proto.UpdateUserRequest) (*proto.UpdateUserResponse, error) {
+	updatedUser := &models.User{
 		ID:       req.GetId(),
 		Username: req.GetUsername(),
 		Email:    req.GetEmail(),
 	}
 
-	err := h.storage.Update(req.GetId(), updatedUser)
+	err := repository.Update(h.collection, req.GetId(), updatedUser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user: %v", err)
 	}
 
-	return &user_proto.UpdateUserResponse{
+	return &proto.UpdateUserResponse{
 		Message: "User updated successfully",
 	}, nil
 }
 
-func (h *UserHandler) DeleteUser(ctx context.Context, req *user_proto.DeleteUserRequest) (*user_proto.DeleteUserResponse, error) {
-	err := h.storage.Delete(req.GetId())
+func (h *UserHandler) DeleteUser(ctx context.Context, req *proto.DeleteUserRequest) (*proto.DeleteUserResponse, error) {
+	err := repository.Delete(*h.collection, req.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete user: %v", err)
 	}
 
-	return &user_proto.DeleteUserResponse{
+	return &proto.DeleteUserResponse{
 		Message: "User deleted successfully",
 	}, nil
 }
