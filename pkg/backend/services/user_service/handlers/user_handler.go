@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	models "github.com/aburifat/go-agro/apis/agro"
+	api "github.com/aburifat/go-agro/apis/agro"
 	"github.com/aburifat/go-agro/pkg/backend/services/user_service/proto"
 	"github.com/aburifat/go-agro/pkg/backend/services/user_service/repository"
 	"github.com/aburifat/go-agro/pkg/backend/services/user_service/storage"
@@ -26,7 +26,7 @@ func NewUserHandler(storage *storage.Storage) *UserHandler {
 }
 
 func (h *UserHandler) CreateUser(ctx context.Context, req *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
-	user := &models.User{
+	user := &api.User{
 		Username: req.GetUsername(),
 		Email:    req.GetEmail(),
 		Password: req.GetPassword(),
@@ -44,7 +44,7 @@ func (h *UserHandler) CreateUser(ctx context.Context, req *proto.CreateUserReque
 }
 
 func (h *UserHandler) GetUserById(ctx context.Context, req *proto.GetUserByIdRequest) (*proto.GetUserByIdResponse, error) {
-	user, err := repository.GetById[models.User](h.collection, req.GetId())
+	user, err := repository.GetById[api.User](h.collection, req.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by id: %v", err)
 	}
@@ -60,7 +60,7 @@ func (h *UserHandler) GetUserById(ctx context.Context, req *proto.GetUserByIdReq
 }
 
 func (h *UserHandler) GetUsers(ctx context.Context, req *proto.GetUsersRequest) (*proto.GetUsersResponse, error) {
-	users, err := repository.GetAll[models.User](h.collection, int(req.GetPageNumber()), int(req.GetPageSize()))
+	users, err := repository.GetAll[api.User](h.collection, int(req.GetPageNumber()), int(req.GetPageSize()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users: %v", err)
 	}
@@ -80,7 +80,7 @@ func (h *UserHandler) GetUsers(ctx context.Context, req *proto.GetUsersRequest) 
 }
 
 func (h *UserHandler) UpdateUser(ctx context.Context, req *proto.UpdateUserRequest) (*proto.UpdateUserResponse, error) {
-	updatedUser := &models.User{
+	updatedUser := &api.User{
 		ID:       req.GetId(),
 		Username: req.GetUsername(),
 		Email:    req.GetEmail(),
