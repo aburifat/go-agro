@@ -1,14 +1,13 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	api "github.com/aburifat/go-agro/apis/agro"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 func serialize[T any](source, destination *T) {
@@ -25,104 +24,69 @@ func serialize[T any](source, destination *T) {
 	}
 }
 
-func Create[T interface{}](c *mongo.Collection, model *T) (string, error) {
-	result, err := c.InsertOne(context.Background(), model)
-	if err != nil {
-		return "", fmt.Errorf("failed to insert: %v", err)
+func Create(db *gorm.DB, user *api.User) (string, error) {
+	result := db.Create(&user)
+	if result.Error != nil {
+		return "", fmt.Errorf("failed to insert: %v", result.Error)
 	}
-
-	id, ok := result.InsertedID.(primitive.ObjectID)
-	if !ok {
-		return "", fmt.Errorf("failed to parse inserted ID")
-	}
-
-	return id.Hex(), nil
+	return user.ID, nil
 }
 
-func Update[T interface{}](c *mongo.Collection, id string, model *T) error {
-	objectID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return fmt.Errorf("invalid id format: %v", err)
+func Update[T interface{}](db *gorm.DB, id string, model *T) error {
+	result := db.Model(&api.User{}).Where("id = ?", id).Updates(model)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update user: %w", result.Error)
 	}
-
-	var existing T
-	err = c.FindOne(context.Background(), bson.M{"_id": objectID}).Decode(&existing)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return fmt.Errorf("document with ID %s not found", id)
-		}
-		return fmt.Errorf("failed to fetch document: %v", err)
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no user found with ID: %s", id)
 	}
-
-	serialize(model, &existing)
-
-	update := bson.M{"$set": existing}
-	_, err = c.UpdateOne(
-		context.Background(),
-		bson.M{"_id": objectID},
-		update,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update document: %v", err)
-	}
-
 	return nil
 }
 
-func GetById[T interface{}](c *mongo.Collection, id string) (*T, error) {
-	var item T
-	objectID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid id format: %v", err)
-	}
-
-	err = c.FindOne(context.Background(), bson.M{"_id": objectID}).Decode(&item)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
+func GetById(db *gorm.DB, id string) (*api.User, error) {
+	var user api.User
+	result := db.First(&user, "id = ?", id)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			fmt.Println("No user found with ID:", id)
+		} else {
+			panic("failed to fetch user: " + result.Error.Error())
 		}
-		return nil, fmt.Errorf("failed to get user by id: %v", err)
+	} else {
+		fmt.Printf("Fetched user: %+v\n", user)
+		fmt.Println("User ID:", user.ID)
 	}
-	return &item, nil
+	return &user, nil
 }
 
-func GetAll[T interface{}](c *mongo.Collection, pageNumber, pageSize int) ([]*T, error) {
+func GetAll[T interface{}](db *gorm.DB, pageNumber, pageSize int) ([]*T, error) {
 	skip := int64((pageNumber - 1) * pageSize)
 	limit := int64(pageSize)
 
 	var data []*T
-	cursor, err := c.Find(context.Background(), bson.M{}, &options.FindOptions{
-		Skip:  &skip,
-		Limit: &limit,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get users: %v", err)
-	}
-	defer cursor.Close(context.Background())
-
-	for cursor.Next(context.Background()) {
-		var item T
-		if err := cursor.Decode(&item); err != nil {
-			return nil, fmt.Errorf("failed to decode user: %v", err)
-		}
-		data = append(data, &item)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %v", err)
+	result := db.Limit(int(limit)).Offset(int(skip)).Find(&data)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get users: %v", result.Error)
 	}
 
 	return data, nil
 }
 
-func Delete(c mongo.Collection, id string) error {
-	objectID, err := primitive.ObjectIDFromHex(id)
+func Delete(db *gorm.DB, id string) error {
+	_, err := uuid.Parse(id)
 	if err != nil {
-		return fmt.Errorf("invalid id format: %v", err)
+		return fmt.Errorf("invalid uid format: %v", err)
 	}
-	_, err = c.DeleteOne(context.Background(), bson.M{"_id": objectID})
-	if err != nil {
+
+	// Delete the user with the given uid
+	result := db.Where("id = ?", id).Delete(&api.User{})
+	if err := result.Error; err != nil {
 		return fmt.Errorf("failed to delete user: %v", err)
+	}
+
+	// Check if any rows were affected
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no user found with uid: %s", id)
 	}
 	return nil
 }

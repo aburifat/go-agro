@@ -1,8 +1,8 @@
 package agro
 
 type User struct {
-	ID       string `bson:"_id,omitempty"`
-	Username string `bson:"username"`
-	Email    string `bson:"email"`
-	Password string `bson:"password"`
+	ID       string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	Username string `gorm:"unique;not null;size:50"`
+	Email    string `gorm:"unique;not null;size:100"`
+	Password string `gorm:"not null;size:255"`
 }
